@@ -1,11 +1,16 @@
 {% extends 'base.html' %}
-{% load static %}
-
-{% block title %}Detalle de Producto{% endblock %}
 
 {% block content %}
-    <h1>{{ producto.nombre }}</h1>
-    <p>{{ producto.descripcion }}</p>
-    <p>Precio: ${{ producto.precio }}</p>
-    <a href="{% url 'lista_productos' %}">Volver a la Lista</a>
+    <h2>Detalle del Producto</h2>
+    <div class="card">
+        {% if producto.imagen %}
+            <img src="{{ producto.imagen.url }}" class="card-img-top" alt="{{ producto.nombre }}">
+        {% endif %}
+        <div class="card-body">
+            <h5 class="card-title">{{ producto.nombre }}</h5>
+            <p class="card-text">{{ producto.descripcion }}</p>
+            <p class="card-text">Precio: ${{ producto.precio }}</p>
+            <a href="{% url 'crear_pedido' %}" class="btn btn-success">Agregar al Pedido</a>
+        </div>
+    </div>
 {% endblock %}

@@ -1,13 +1,18 @@
 {% extends 'base.html' %}
-{% load static %}
-
-{% block title %}Crear Pedido{% endblock %}
+{% load crispy_forms_tags %}
 
 {% block content %}
-    <h1>Crear Pedido</h1>
+    <h2>Crear Pedido</h2>
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
     <form method="post">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Crear Pedido</button>
+        {{ item_form|crispy }}
+        <button type="submit">Agregar al Pedido</button>
     </form>
 {% endblock %}

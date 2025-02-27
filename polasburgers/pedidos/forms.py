@@ -1,25 +1,29 @@
 from django import forms
-from .models import Pedido, Cliente
-from django.contrib.auth.models import User
+from .models import Pedido, Cliente, ItemPedido
+from productos.models import Producto
+from django.core.exceptions import ValidationError
 
 class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
         fields = ['direccion', 'telefono']
 
-class UserForm(forms.ModelForm):
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'password']
-        widgets = {
-            'password': forms.PasswordInput(),
-        }
-
 class PedidoForm(forms.ModelForm):
     class Meta:
         model = Pedido
-        fields = ['cliente']
+        fields = []
+
+class ItemPedidoForm(forms.ModelForm):
+    class Meta:
+        model = ItemPedido
+        fields = ['producto', 'cantidad']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['cliente'].queryset = Cliente.objects.all()
+        self.fields['producto'].queryset = Producto.objects.all()
+
+    def clean_cantidad(self):
+        cantidad = self.cleaned_data['cantidad']
+        if cantidad <= 0:
+            raise ValidationError("La cantidad debe ser mayor que cero.")
+        return cantidad

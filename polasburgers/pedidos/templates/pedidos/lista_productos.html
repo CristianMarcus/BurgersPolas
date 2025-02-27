@@ -1,19 +1,23 @@
 {% extends 'base.html' %}
-{% load static %}
-
 {% block title %}Lista de Productos{% endblock %}
-
 {% block content %}
-    <h1>Lista de Productos</h1>
-    <ul>
+    <h2>Lista de Productos</h2>
+    <div class="row">
         {% for producto in productos %}
-        <li>
-            <a href="{% url 'detalle_producto' producto.id %}">{{ producto.nombre }}</a> - ${{ producto.precio }}
-        </li>
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    {% if producto.imagen %}
+                        <img src="{{ producto.imagen.url }}" class="card-img-top" alt="{{ producto.nombre }}">
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ producto.nombre }}</h5>
+                        <p class="card-text">{{ producto.descripcion }}</p>
+                        <p class="card-text">Precio: ${{ producto.precio }}</p>
+                        <a href="{% url 'detalle_producto' producto.id %}" class="btn btn-primary">Ver Detalle</a>
+                    </div>
+                </div>
+            </div>
         {% endfor %}
-    </ul>
-    <a href="{% url 'crear_pedido' %}">Crear Pedido</a>
+    </div>
 {% endblock %}
-
-
 
