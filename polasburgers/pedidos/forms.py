@@ -1,6 +1,5 @@
 from django import forms
-from .models import Pedido, Cliente, ItemPedido
-from productos.models import Producto
+from .models import Pedido, Cliente, ItemPedido, Producto  # Importa Producto desde .models
 from django.core.exceptions import ValidationError
 
 class ClienteForm(forms.ModelForm):
@@ -27,3 +26,8 @@ class ItemPedidoForm(forms.ModelForm):
         if cantidad <= 0:
             raise ValidationError("La cantidad debe ser mayor que cero.")
         return cantidad
+
+class ProductoForm(forms.ModelForm):
+    class Meta:
+        model = Producto
+        fields = '__all__'

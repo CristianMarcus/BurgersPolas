@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Lista de Productos{% endblock %}
 {% block content %}
     <h2>Lista de Productos</h2>
+    <a href="{% url 'agregar_producto' %}" class="btn btn-success mb-3">Agregar Producto</a>
     <div class="row">
         {% for producto in productos %}
             <div class="col-md-4 mb-4">
@@ -14,10 +16,11 @@
                         <p class="card-text">{{ producto.descripcion }}</p>
                         <p class="card-text">Precio: ${{ producto.precio }}</p>
                         <a href="{% url 'detalle_producto' producto.id %}" class="btn btn-primary">Ver Detalle</a>
+                        <a href="{% url 'editar_producto' producto.id %}" class="btn btn-warning">Editar</a>
+                        <a href="{% url 'eliminar_producto' producto.id %}" class="btn btn-danger">Eliminar</a>
                     </div>
                 </div>
             </div>
         {% endfor %}
     </div>
 {% endblock %}
-
