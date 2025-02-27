@@ -1,0 +1,13 @@
+.product-list li {
+    transition: transform 0.3s ease-in-out;
+}
+
+.product-list li:hover {
+    transform: translateY(-5px);
+}
+
+.navbar a {
+    transition: background-color 0.3s ease;
+}
+
+/* Agrega más animaciones según sea necesario */

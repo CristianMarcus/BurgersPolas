@@ -1,0 +1,12 @@
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+    }
+
+    .navbar a {
+        display: block;
+        text-align: center;
+    }
+}
+
+/* Agrega más estilos responsivos según sea necesario */

@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Crear Pedido{% endblock %}
+
+{% block content %}
+    <h1>Crear Pedido</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Crear Pedido</button>
+    </form>
+{% endblock %}
