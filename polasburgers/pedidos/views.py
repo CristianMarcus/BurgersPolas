@@ -3,22 +3,25 @@ from .models import Producto, Pedido, ItemPedido, Cliente, ClienteAnonimo
 from .forms import PedidoForm, ItemPedidoForm, ProductoForm, ClienteAnonimoForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db.models import Sum
+import uuid
 
 @login_required
 def agregar_producto(request):
     if request.method == 'POST':
-        form = ProductoForm(request.POST, request.FILES) # request.FILES para manejar imágenes
+        form = ProductoForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Producto agregado exitosamente.")
-            return redirect('lista_productos') # Redirige a la lista de productos
+            try:
+                form.save()
+                messages.success(request, "Producto agregado exitosamente.")
+                return redirect('lista_productos')
+            except Exception as e:
+                messages.error(request, f"Error al agregar el producto: {e}")
         else:
             messages.error(request, "Por favor, corrige los errores en el formulario.")
     else:
         form = ProductoForm()
-        print(form)
     return render(request, 'pedidos/agregar_producto.html', {'form': form})
-
 
 @login_required
 def editar_producto(request, producto_id):
@@ -26,9 +29,12 @@ def editar_producto(request, producto_id):
     if request.method == 'POST':
         form = ProductoForm(request.POST, request.FILES, instance=producto)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Producto editado exitosamente.")
-            return redirect('lista_productos')
+            try:
+                form.save()
+                messages.success(request, "Producto editado exitosamente.")
+                return redirect('lista_productos')
+            except Exception as e:
+                messages.error(request, f"Error al editar el producto: {e}")
         else:
             messages.error(request, "Por favor, corrige los errores en el formulario.")
     else:
@@ -39,34 +45,33 @@ def editar_producto(request, producto_id):
 def eliminar_producto(request, producto_id):
     producto = get_object_or_404(Producto, pk=producto_id)
     if request.method == 'POST':
-        producto.delete()
-        messages.success(request, "Producto eliminado exitosamente.")
-        return redirect('lista_productos')
+        try:
+            producto.delete()
+            messages.success(request, "Producto eliminado exitosamente.")
+            return redirect('lista_productos')
+        except Exception as e:
+            messages.error(request, f"Error al eliminar el producto: {e}")
     return render(request, 'pedidos/eliminar_producto.html', {'producto': producto})
-
 
 def lista_productos(request):
     productos = Producto.objects.all()
     return render(request, 'pedidos/lista_productos.html', {'productos': productos})
 
-
 def detalle_producto(request, producto_id):
     producto = get_object_or_404(Producto, pk=producto_id)
     return render(request, 'pedidos/detalle_producto.html', {'producto': producto})
 
-
 @login_required
 def crear_pedido(request):
     carrito = request.session.get('carrito', {})
-
     if not carrito:
         messages.error(request, 'El carrito está vacío. Agrega productos antes de crear un pedido.')
-        return redirect('listar_productos')
+        return redirect('lista_productos')
 
     if request.method == 'POST':
         form = PedidoForm(request.POST)
-        try:
-            if form.is_valid():
+        if form.is_valid():
+            try:
                 pedido = form.save(commit=False)
                 if request.user.is_authenticated:
                     pedido.usuario = request.user
@@ -79,35 +84,32 @@ def crear_pedido(request):
                 del request.session['carrito']
                 messages.success(request, 'Pedido creado con éxito.')
                 return redirect('listar_pedidos')
-            else:
-                messages.error(request, 'Error en el formulario. Por favor, corrige los errores.')
-        except Exception as e:
-            messages.error(request, f'Error al crear el pedido: {e}')
+            except Exception as e:
+                messages.error(request, f'Error al crear el pedido: {e}')
+        else:
+            messages.error(request, 'Error en el formulario. Por favor, corrige los errores.')
     else:
         form = PedidoForm()
-
     return render(request, 'pedidos/crear_pedido.html', {'form': form})
 
 def listar_pedidos(request):
-        try:
-            if request.user.is_authenticated:
-                pedidos = Pedido.objects.filter(usuario=request.user)
-            else:
-                pedidos = []
-                for key in request.session.keys():
-                    if key.startswith('pedido_'):
-                        identificador_pedido = key.split('_')[1]
-                        try:
-                            pedido = Pedido.objects.get(identificador_pedido=identificador_pedido)
-                            pedidos.append(pedido)
-                        except Pedido.DoesNotExist:
-                            pass
-
-            return render(request, 'pedidos/listar_pedidos.html', {'pedidos': pedidos})
-        except Exception as e:
-            messages.error(request, f'Error al listar los pedidos: {e}')
-            return render(request, 'pedidos/listar_pedidos.html', {'pedidos': []})  # Muestra una lista vacía en caso de error
-
+    try:
+        if request.user.is_authenticated:
+            pedidos = Pedido.objects.filter(usuario=request.user).prefetch_related('productos')
+        else:
+            pedidos = []
+            for key in request.session.keys():
+                if key.startswith('pedido_'):
+                    identificador_pedido = key.split('_')[1]
+                    try:
+                        pedido = Pedido.objects.get(identificador_pedido=identificador_pedido).prefetch_related('productos')
+                        pedidos.append(pedido)
+                    except Pedido.DoesNotExist:
+                        pass
+        return render(request, 'pedidos/listar_pedidos.html', {'pedidos': pedidos})
+    except Exception as e:
+        messages.error(request, f'Error al listar los pedidos: {e}')
+        return render(request, 'pedidos/listar_pedidos.html', {'pedidos': []})
 
 def detalle_pedido(request, pedido_id):
     pedido = get_object_or_404(Pedido, pk=pedido_id)
@@ -122,27 +124,25 @@ def detalle_pedido(request, pedido_id):
     return redirect('listar_pedidos')
 
 def eliminar_pedido(request, pedido_id):
-        try:
-            if request.user.is_authenticated:
-                pedido = get_object_or_404(Pedido, pk=pedido_id, usuario=request.user)
-            else:
-                pedido = get_object_or_404(Pedido, pk=pedido_id)
+    try:
+        if request.user.is_authenticated:
+            pedido = get_object_or_404(Pedido, pk=pedido_id, usuario=request.user)
+        else:
+            pedido = get_object_or_404(Pedido, pk=pedido_id)
 
-            if request.method == 'POST':
-                if not request.user.is_authenticated:
-                    del request.session[f'pedido_{pedido.identificador_pedido}']
-                pedido.delete()
-                messages.success(request, 'Pedido eliminado con éxito.')
-                return redirect('listar_pedidos')
-            return render(request, 'pedidos/eliminar_pedido.html', {'pedido': pedido})
-        except Pedido.DoesNotExist:
-            messages.error(request, 'El pedido no existe.')
+        if request.method == 'POST':
+            if not request.user.is_authenticated:
+                del request.session[f'pedido_{pedido.identificador_pedido}']
+            pedido.delete()
+            messages.success(request, 'Pedido eliminado con éxito.')
             return redirect('listar_pedidos')
-        except Exception as e:
-            messages.error(request, f'Error al eliminar el pedido: {e}')
-            return redirect('listar_pedidos')
-
-    
+        return render(request, 'pedidos/eliminar_pedido.html', {'pedido': pedido})
+    except Pedido.DoesNotExist:
+        messages.error(request, 'El pedido no existe.')
+        return redirect('listar_pedidos')
+    except Exception as e:
+        messages.error(request, f'Error al eliminar el pedido: {e}')
+        return redirect('listar_pedidos')
 
 def agregar_al_carrito(request, producto_id):
     try:
@@ -164,31 +164,7 @@ def agregar_al_carrito(request, producto_id):
         messages.error(request, 'El producto no existe.')
     except Exception as e:
         messages.error(request, f'Error al agregar el producto al carrito: {e}')
-
     return redirect('listar_productos')
-
-# Vistas para el carrito
-
-def ver_carrito(request):
-        try:
-            carrito = request.session.get('carrito', {})
-            productos_carrito = []
-            total = 0
-
-            for producto_id, detalles in carrito.items():
-                subtotal = float(detalles['precio']) * detalles['cantidad']
-                detalles['subtotal'] = subtotal
-                detalles['id'] = producto_id
-                productos_carrito.append(detalles)
-                total += subtotal
-
-            return render(request, 'pedidos/carrito.html', {
-                'productos_carrito': productos_carrito,
-                'total': total,
-            })
-        except Exception as e:
-            messages.error(request, f'Error al mostrar el carrito: {e}')
-            return render(request, 'pedidos/carrito.html', {'productos_carrito': [], 'total': 0})  # Muestra un carrito vacío en caso de error
 
 def eliminar_del_carrito(request, producto_id):
         carrito = request.session.get('carrito', {})
@@ -203,3 +179,24 @@ def eliminar_del_carrito(request, producto_id):
             messages.error(request, f'Error al eliminar el producto del carrito: {e}')
 
         return redirect('ver_carrito')
+
+def ver_carrito(request):
+    try:
+        carrito = request.session.get('carrito', {})
+        productos_carrito = []
+        total = 0
+
+        for producto_id, detalles in carrito.items():
+            subtotal = float(detalles['precio']) * detalles['cantidad']
+            detalles['subtotal'] = subtotal
+            detalles['id'] = producto_id
+            productos_carrito.append(detalles)
+            total += subtotal
+
+        return render(request, 'pedidos/carrito.html', {
+            'productos_carrito': productos_carrito,
+            'total': total
+        })
+    except Exception as e:
+        messages.error(request, f'Error al ver el carrito: {e}')
+        return redirect('listar_productos')
