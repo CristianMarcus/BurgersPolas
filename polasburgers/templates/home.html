@@ -4,10 +4,17 @@
 {% block title %}Inicio - Pola's Burgers{% endblock %}
 
 {% block content %}
-    {% include 'header.html' %}
-    {% include 'historia_section.html' %}
-    {% include 'especialidades_section.html' %}
-    {% include 'porque_section.html' %}
-    {% include 'pedido_ahora_section.html' %}
-    {% include 'contacto_section.html' %}
+    <div class="content-wrap-home">
+        <div class="sidebar">
+            {% include 'sidebar.html' %}
+        </div>
+        <div class="main-content-home">
+            {% include 'header.html' %}
+            {% include 'historia_section.html' %}
+            {% include 'especialidades_section.html' %}
+            {% include 'porque_section.html' %}
+            {% include 'pedido_ahora_section.html' %}
+            {% include 'contacto_section.html' %}
+        </div>
+    </div>
 {% endblock %}
