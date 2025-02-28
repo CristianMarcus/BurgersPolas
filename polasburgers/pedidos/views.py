@@ -55,22 +55,15 @@ def detalle_producto(request, producto_id):
     return render(request, 'pedidos/detalle_producto.html', {'producto': producto})
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import Producto, Pedido, ItemPedido, Cliente, ClienteAnonimo
-from .forms import PedidoForm, ItemPedidoForm, ProductoForm, ClienteAnonimoForm
-from django.contrib import messages
 
 def crear_pedido(request):
     if request.method == 'POST':
         cliente_form = ClienteAnonimoForm(request.POST)
-        pedido_form = PedidoForm(request.POST)
         item_form = ItemPedidoForm(request.POST)
-        if cliente_form.is_valid() and pedido_form.is_valid() and item_form.is_valid():
+        if cliente_form.is_valid() and item_form.is_valid():
             cliente_anonimo = cliente_form.save()
-            request.session['cliente_anonimo_id'] = cliente_anonimo.id  # Almacena el ID en la sesión
-            pedido = pedido_form.save(commit=False)
-            pedido.cliente_anonimo = cliente_anonimo
-            pedido.save()
+            request.session['cliente_anonimo_id'] = cliente_anonimo.id
+            pedido = Pedido.objects.create(cliente_anonimo=cliente_anonimo)  # Crea el pedido aquí
             item = item_form.save(commit=False)
             item.pedido = pedido
             item.precio_unitario = item.producto.precio
@@ -83,9 +76,8 @@ def crear_pedido(request):
             messages.error(request, "Por favor, corrige los errores en el formulario.")
     else:
         cliente_form = ClienteAnonimoForm()
-        pedido_form = PedidoForm()
         item_form = ItemPedidoForm()
-    return render(request, 'pedidos/crear_pedido.html', {'cliente_form': cliente_form, 'pedido_form': pedido_form, 'item_form': item_form})
+    return render(request, 'pedidos/crear_pedido.html', {'cliente_form': cliente_form, 'item_form': item_form})
 
 def listar_pedidos(request):
     if request.user.is_authenticated:
