@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Carrito de Compras{% endblock %}
+
+{% block content %}
+    <h2>Carrito de Compras</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio</th>
+                <th>Subtotal</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for producto in productos_carrito %}
+                <tr>
+                    <td>{{ producto.nombre }}</td>
+                    <td>{{ producto.cantidad }}</td>
+                    <td>{{ producto.precio }}</td>
+                    <td>{{ producto.subtotal }}</td>
+                    <td><a href="{% url 'eliminar_del_carrito' producto.id %}" class="btn btn-danger btn-sm">Eliminar</a></td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3">Total:</td>
+                <td>{{ total }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    <a href="{% url 'crear_pedido' %}" class="btn btn-primary">Realizar Pedido</a>
+{% endblock %}

@@ -92,9 +92,82 @@ def listar_pedidos(request):
     return render(request, 'pedidos/listar_pedidos.html', {'pedidos': pedidos})
 
 
-
-
 def detalle_pedido(request, pedido_id):
-    pedido = get_object_or_404(Pedido, pk=pedido_id, cliente__user=request.user)
-    items = ItemPedido.objects.filter(pedido=pedido)
-    return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido, 'items': items})
+    pedido = get_object_or_404(Pedido, pk=pedido_id)
+    if request.user.is_authenticated:
+        if pedido.cliente and pedido.cliente.user == request.user:
+            return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
+    else:
+        cliente_anonimo_id = request.session.get('cliente_anonimo_id')
+        if cliente_anonimo_id and pedido.cliente_anonimo_id == cliente_anonimo_id:
+            return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
+    messages.error(request, "No tienes permiso para ver este pedido.")
+    return redirect('listar_pedidos')
+
+def eliminar_pedido(request, pedido_id):
+    pedido = get_object_or_404(Pedido, pk=pedido_id)
+    if request.user.is_authenticated:
+        if pedido.cliente and pedido.cliente.user == request.user:
+            pedido.delete()
+            messages.success(request, "Pedido eliminado exitosamente.")
+            return redirect('listar_pedidos')
+    else:
+        cliente_anonimo_id = request.session.get('cliente_anonimo_id')
+        if cliente_anonimo_id and pedido.cliente_anonimo_id == cliente_anonimo_id:
+            pedido.delete()
+            messages.success(request, "Pedido eliminado exitosamente.")
+            return redirect('listar_pedidos')
+    messages.error(request, "No tienes permiso para eliminar este pedido.")
+    return redirect('listar_pedidos')
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Producto
+from django.contrib import messages
+
+def agregar_al_carrito(request, producto_id):
+    producto = get_object_or_404(Producto, pk=producto_id)
+    carrito = request.session.get('carrito', {})
+    producto_id_str = str(producto_id) # Convertir a string para usarlo como clave
+
+    if producto_id_str in carrito:
+        carrito[producto_id_str]['cantidad'] += 1
+    else:
+        carrito[producto_id_str] = {
+            'nombre': producto.nombre,
+            'precio': str(producto.precio),
+            'cantidad': 1,
+        }
+
+    request.session['carrito'] = carrito
+    messages.success(request, f'{producto.nombre} agregado al carrito.')
+    return redirect('listar_productos') # Redirige a la lista de productos
+
+# Vistas para el carrito
+
+def ver_carrito(request):
+    carrito = request.session.get('carrito', {})
+    productos_carrito = []
+    total = 0
+
+    for producto_id, detalles in carrito.items():
+        subtotal = float(detalles['precio']) * detalles['cantidad']
+        detalles['subtotal'] = subtotal
+        detalles['id'] = producto_id
+        productos_carrito.append(detalles)
+        total += subtotal
+
+    return render(request, 'pedidos/carrito.html', {
+        'productos_carrito': productos_carrito,
+        'total': total,
+    })
+
+def eliminar_del_carrito(request, producto_id):
+    carrito = request.session.get('carrito', {})
+    producto_id_str = str(producto_id)
+
+    if producto_id_str in carrito:
+        del carrito[producto_id_str]
+        request.session['carrito'] = carrito
+        messages.success(request, 'Producto eliminado del carrito.')
+
+    return redirect('ver_carrito')

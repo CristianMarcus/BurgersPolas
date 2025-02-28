@@ -21,6 +21,7 @@
                     <td>{{ pedido.total }}</td>
                     <td>{{ pedido.estado }}</td>
                     <td><a href="{% url 'detalle_pedido' pedido.id %}">Ver Detalle</a></td>
+                    <td><a href="{% url 'eliminar_pedido' pedido.id %}">Eliminar</a></td>
                 </tr>
             {% endfor %}
         </tbody>

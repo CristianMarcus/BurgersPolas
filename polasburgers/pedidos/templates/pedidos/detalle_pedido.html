@@ -1,4 +1,8 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}Detalle del Pedido{% endblock %}
+
 
 {% block content %}
     <h2>Detalle del Pedido {{ pedido.id }}</h2>
@@ -20,7 +24,7 @@
                     <td>{{ item.producto.nombre }}</td>
                     <td>{{ item.cantidad }}</td>
                     <td>{{ item.precio_unitario }}</td>
-                    <td>{{ item.cantidad|multiply:item.precio_unitario }}</td>
+                    <td>{{ item.cantidad|multiplicar:item.precio_unitario }}</td>
                 </tr>
             {% endfor %}
         </tbody>

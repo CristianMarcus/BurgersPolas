@@ -28,7 +28,7 @@ class Cliente(models.Model):
 
 class Pedido(models.Model):
     cliente_anonimo = models.ForeignKey(ClienteAnonimo, on_delete=models.SET_NULL, null=True, blank=True)
-    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, null=True, blank=True)
     fecha_pedido = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     ESTADO_CHOICES = (
