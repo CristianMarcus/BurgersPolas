@@ -44,17 +44,22 @@ def eliminar_producto(request, producto_id):
         return redirect('lista_productos')
     return render(request, 'pedidos/eliminar_producto.html', {'producto': producto})
 
-@login_required
+
 def lista_productos(request):
     productos = Producto.objects.all()
     return render(request, 'pedidos/lista_productos.html', {'productos': productos})
 
-@login_required
+
 def detalle_producto(request, producto_id):
     producto = get_object_or_404(Producto, pk=producto_id)
     return render(request, 'pedidos/detalle_producto.html', {'producto': producto})
 
-@login_required
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Producto, Pedido, ItemPedido, Cliente, ClienteAnonimo
+from .forms import PedidoForm, ItemPedidoForm, ProductoForm, ClienteAnonimoForm
+from django.contrib import messages
+
 def crear_pedido(request):
     if request.method == 'POST':
         cliente_form = ClienteAnonimoForm(request.POST)
@@ -62,6 +67,7 @@ def crear_pedido(request):
         item_form = ItemPedidoForm(request.POST)
         if cliente_form.is_valid() and pedido_form.is_valid() and item_form.is_valid():
             cliente_anonimo = cliente_form.save()
+            request.session['cliente_anonimo_id'] = cliente_anonimo.id  # Almacena el ID en la sesión
             pedido = pedido_form.save(commit=False)
             pedido.cliente_anonimo = cliente_anonimo
             pedido.save()
@@ -81,13 +87,21 @@ def crear_pedido(request):
         item_form = ItemPedidoForm()
     return render(request, 'pedidos/crear_pedido.html', {'cliente_form': cliente_form, 'pedido_form': pedido_form, 'item_form': item_form})
 
-@login_required
 def listar_pedidos(request):
-    cliente, created = Cliente.objects.get_or_create(user=request.user) # Cambia usuario a user
-    pedidos = Pedido.objects.filter(cliente=cliente)
+    if request.user.is_authenticated:
+        cliente, created = Cliente.objects.get_or_create(user=request.user)
+        pedidos = Pedido.objects.filter(cliente=cliente)
+    else:
+        cliente_anonimo_id = request.session.get('cliente_anonimo_id')
+        if cliente_anonimo_id:
+            pedidos = Pedido.objects.filter(cliente_anonimo_id=cliente_anonimo_id)
+        else:
+            pedidos = []
     return render(request, 'pedidos/listar_pedidos.html', {'pedidos': pedidos})
 
-@login_required
+
+
+
 def detalle_pedido(request, pedido_id):
     pedido = get_object_or_404(Pedido, pk=pedido_id, cliente__user=request.user)
     items = ItemPedido.objects.filter(pedido=pedido)
