@@ -1,5 +1,5 @@
 from django import forms
-from .models import Pedido, Cliente, ItemPedido, Producto  # Importa Producto desde .models
+from .models import Pedido, ClienteAnonimo, Cliente, ItemPedido, Producto
 from django.core.exceptions import ValidationError
 
 class ClienteForm(forms.ModelForm):
@@ -11,6 +11,11 @@ class PedidoForm(forms.ModelForm):
     class Meta:
         model = Pedido
         fields = []
+
+class ClienteAnonimoForm(forms.ModelForm):
+    class Meta:
+        model = ClienteAnonimo
+        fields = ['nombre', 'direccion', 'telefono']
 
 class ItemPedidoForm(forms.ModelForm):
     class Meta:

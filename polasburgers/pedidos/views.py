@@ -1,9 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import Producto, Pedido, ItemPedido, Cliente
-from .forms import PedidoForm, ItemPedidoForm, ProductoForm
+from .models import Producto, Pedido, ItemPedido, Cliente, ClienteAnonimo
+from .forms import PedidoForm, ItemPedidoForm, ProductoForm, ClienteAnonimoForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-
 
 @login_required
 def agregar_producto(request):
@@ -57,28 +56,30 @@ def detalle_producto(request, producto_id):
 
 @login_required
 def crear_pedido(request):
-    cliente, created = Cliente.objects.get_or_create(user=request.user)
     if request.method == 'POST':
+        cliente_form = ClienteAnonimoForm(request.POST)
         pedido_form = PedidoForm(request.POST)
         item_form = ItemPedidoForm(request.POST)
-        if pedido_form.is_valid() and item_form.is_valid():
-            try:
-                pedido = Pedido.objects.create(cliente=cliente)
-                item = item_form.save(commit=False)
-                item.pedido = pedido
-                item.precio_unitario = item.producto.precio
-                item.save()
-                pedido.total = sum(item.precio_unitario * item.cantidad for item in ItemPedido.objects.filter(pedido=pedido))
-                pedido.save()
-                messages.success(request, "Pedido creado exitosamente.")
-                return redirect('detalle_pedido', pedido_id=pedido.id)
-            except Exception as e:
-                messages.error(request, f"Error al crear el pedido: {e}")
-                return redirect('crear_pedido')
+        if cliente_form.is_valid() and pedido_form.is_valid() and item_form.is_valid():
+            cliente_anonimo = cliente_form.save()
+            pedido = pedido_form.save(commit=False)
+            pedido.cliente_anonimo = cliente_anonimo
+            pedido.save()
+            item = item_form.save(commit=False)
+            item.pedido = pedido
+            item.precio_unitario = item.producto.precio
+            item.save()
+            pedido.total = sum(item.precio_unitario * item.cantidad for item in ItemPedido.objects.filter(pedido=pedido))
+            pedido.save()
+            messages.success(request, "Pedido creado exitosamente.")
+            return redirect('detalle_pedido', pedido_id=pedido.id)
+        else:
+            messages.error(request, "Por favor, corrige los errores en el formulario.")
     else:
+        cliente_form = ClienteAnonimoForm()
         pedido_form = PedidoForm()
         item_form = ItemPedidoForm()
-    return render(request, 'pedidos/crear_pedido.html', {'pedido_form': pedido_form, 'item_form': item_form})
+    return render(request, 'pedidos/crear_pedido.html', {'cliente_form': cliente_form, 'pedido_form': pedido_form, 'item_form': item_form})
 
 @login_required
 def listar_pedidos(request):
