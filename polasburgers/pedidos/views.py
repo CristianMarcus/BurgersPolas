@@ -54,6 +54,24 @@ def eliminar_producto(request, producto_id):
             messages.error(request, f"Error al eliminar el producto: {e}")
     return render(request, 'pedidos/eliminar_producto.html', {'producto': producto})
 
+
+def actualizar_producto(request, producto_id):
+    producto = get_object_or_404(Producto, id=producto_id)
+    if request.method == 'POST':
+        try:
+            nueva_cantidad = int(request.POST.get('cantidad', 1))
+        except ValueError:
+            nueva_cantidad = 1
+
+        producto.cantidad = nueva_cantidad
+        producto.save()  # Esto recalcula el subtotal automáticamente
+        messages.success(request, "Producto actualizado correctamente.")
+        return redirect('vista_carrito')  # Asegúrate de redirigir a la vista del carrito o lista de productos
+    else:
+        messages.error(request, "Método no permitido.")
+        return redirect('vista_carrito')
+
+
 def lista_productos(request):
     productos = Producto.objects.all()
     return render(request, 'pedidos/lista_productos.html', {'productos': productos})
@@ -242,33 +260,32 @@ def eliminar_del_carrito(request, producto_id):
         return redirect('ver_carrito')
 
 def ver_carrito(request):
-        try:
-            carrito = request.session.get('carrito', {})
-            print(f"Carrito en ver_carrito: {carrito}")
-            productos_carrito = []
-            total = 0
+    try:
+        carrito = request.session.get('carrito', {})
+        print(f"Carrito en ver_carrito: {carrito}")
+        productos_carrito = []
+        total = 0
 
-            for producto_id, detalles in carrito.items():
-                try:
-                    precio = float(detalles['precio'])
-                    cantidad = detalles['cantidad']
-                    print(f"Cantidad en ver_carrito: {cantidad}")
-                    # Verifica si el subtotal existe en los detalles
-                    if 'subtotal' not in detalles:
-                        detalles['subtotal'] = precio * cantidad
-                    subtotal = detalles['subtotal']
-                    detalles['id'] = producto_id
-                    productos_carrito.append(detalles)
-                    total += subtotal
-                except ValueError:
-                    print(f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
-                    messages.error(request, f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
+        for producto_id, detalles in carrito.items():
+            try:
+                precio = float(detalles['precio'])
+                cantidad = int(detalles['cantidad'])
+                print(f"Cantidad en ver_carrito: {cantidad}")
+                # Recalcula siempre el subtotal basado en la cantidad actualizada
+                detalles['subtotal'] = precio * cantidad
+                detalles['id'] = producto_id
+                productos_carrito.append(detalles)
+                total += detalles['subtotal']
+            except ValueError:
+                error_msg = f"Error: No se pudo convertir el precio '{detalles['precio']}' o la cantidad '{detalles['cantidad']}' a un número."
+                print(error_msg)
+                messages.error(request, error_msg)
 
-            return render(request, 'pedidos/carrito.html', {
-                'productos_carrito': productos_carrito,
-                'total': total
-            })
-        except Exception as e:
-            print(f"Error en ver_carrito: {e}")
-            messages.error(request, f'Error al ver el carrito: {e}')
-            return redirect('listar_productos')
+        return render(request, 'pedidos/carrito.html', {
+            'productos_carrito': productos_carrito,
+            'total': total
+        })
+    except Exception as e:
+        print(f"Error en ver_carrito: {e}")
+        messages.error(request, f'Error al ver el carrito: {e}')
+        return redirect('listar_productos')

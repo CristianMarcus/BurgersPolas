@@ -6,6 +6,15 @@ class Producto(models.Model):
     descripcion = models.TextField()
     precio = models.DecimalField(max_digits=6, decimal_places=2)
     imagen = models.ImageField(upload_to='productos/', null=True, blank=True)
+    
+    def actualizar_subtotal(self):
+        self.subtotal = self.precio * self.cantidad
+        return self.subtotal
+
+    def save(self, *args, **kwargs):
+        # Actualiza el subtotal cada vez que se guarda el producto
+        self.actualizar_subtotal()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.nombre

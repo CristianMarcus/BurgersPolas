@@ -8,7 +8,7 @@ urlpatterns = [
     path('agregar/', views.agregar_producto, name='agregar_producto'),  # Formulario para agregar un nuevo producto
     path('editar/<int:producto_id>/', views.editar_producto, name='editar_producto'),  # Formulario para editar un producto existente
     path('eliminar/<int:producto_id>/', views.eliminar_producto, name='eliminar_producto'),  # Confirmación para eliminar un producto
-
+    path('producto/actualizar/<int:producto_id>/', views.actualizar_producto, name='actualizar_producto'),
     # URLs para Pedidos
     path('crear/', views.crear_pedido, name='crear_pedido'),  # Formulario para crear un nuevo pedido
     path('pedidos/', views.listar_pedidos, name='listar_pedidos'),  # Lista todos los pedidos
