@@ -125,14 +125,15 @@ def enviar_mensaje_whatsapp(request, pedido):
 def actualizar_cantidad(request, producto_id):
         if request.method == 'POST':
             cantidad = request.POST.get('cantidad')
-            print(f"Cantidad recibida: {cantidad}") # Agregue esta linea
             if cantidad and cantidad.isdigit() and int(cantidad) > 0:
                 cantidad = int(cantidad)
                 carrito = request.session.get('carrito', {})
                 if producto_id in carrito:
                     carrito[producto_id]['cantidad'] = cantidad
+                    # Recalcula el subtotal
+                    precio = float(carrito[producto_id]['precio'])
+                    carrito[producto_id]['subtotal'] = precio * cantidad
                     request.session['carrito'] = carrito
-                    print(f"Carrito actualizado: {request.session['carrito']}") # Agregue esta linea
             else:
                 messages.error(request, 'Por favor, ingresa una cantidad válida.')
         return redirect('ver_carrito')
