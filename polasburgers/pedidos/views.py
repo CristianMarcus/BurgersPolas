@@ -123,18 +123,19 @@ def enviar_mensaje_whatsapp(request, pedido):
             messages.error(request, f"Error al enviar mensaje de WhatsApp: {e}")
         
 def actualizar_cantidad(request, producto_id):
-            if request.method == 'POST':
-                cantidad = request.POST.get('cantidad')
-                if cantidad and cantidad.isdigit() and int(cantidad) > 0:
-                    cantidad = int(cantidad)
-                    carrito = request.session.get('carrito', {})
-                    if producto_id in carrito:
-                        carrito[producto_id]['cantidad'] = cantidad
-                        request.session['carrito'] = carrito
-                        print(f"Carrito actualizado: {request.session['carrito']}")  # Verifica los datos de la sesión
-                else:
-                    messages.error(request, 'Por favor, ingresa una cantidad válida.')
-            return redirect('ver_carrito')
+        if request.method == 'POST':
+            cantidad = request.POST.get('cantidad')
+            print(f"Cantidad recibida: {cantidad}") # Agregue esta linea
+            if cantidad and cantidad.isdigit() and int(cantidad) > 0:
+                cantidad = int(cantidad)
+                carrito = request.session.get('carrito', {})
+                if producto_id in carrito:
+                    carrito[producto_id]['cantidad'] = cantidad
+                    request.session['carrito'] = carrito
+                    print(f"Carrito actualizado: {request.session['carrito']}") # Agregue esta linea
+            else:
+                messages.error(request, 'Por favor, ingresa una cantidad válida.')
+        return redirect('ver_carrito')
 
 def eliminar_del_carrito(request, producto_id):
     carrito = request.session.get('carrito', {})
@@ -244,30 +245,31 @@ def eliminar_del_carrito(request, producto_id):
         return redirect('ver_carrito')
 
 def ver_carrito(request):
-            try:
-                carrito = request.session.get('carrito', {})
-                print(f"Carrito en ver_carrito: {carrito}")  # Verifica los datos de la sesión
-                productos_carrito = []
-                total = 0
+        try:
+            carrito = request.session.get('carrito', {})
+            print(f"Carrito en ver_carrito: {carrito}") # Agregue esta linea
+            productos_carrito = []
+            total = 0
 
-                for producto_id, detalles in carrito.items():
-                    try:
-                        precio = float(detalles['precio'])
-                        cantidad = detalles['cantidad']
-                        subtotal = precio * cantidad
-                        detalles['subtotal'] = subtotal
-                        detalles['id'] = producto_id
-                        productos_carrito.append(detalles)
-                        total += subtotal
-                    except ValueError:
-                        print(f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
-                        messages.error(request, f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
+            for producto_id, detalles in carrito.items():
+                try:
+                    precio = float(detalles['precio'])
+                    cantidad = detalles['cantidad']
+                    print(f"Cantidad en ver_carrito: {cantidad}") # Agregue esta linea
+                    subtotal = precio * cantidad
+                    detalles['subtotal'] = subtotal
+                    detalles['id'] = producto_id
+                    productos_carrito.append(detalles)
+                    total += subtotal
+                except ValueError:
+                    print(f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
+                    messages.error(request, f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
 
-                return render(request, 'pedidos/carrito.html', {
-                    'productos_carrito': productos_carrito,
-                    'total': total
-                })
-            except Exception as e:
-                print(f"Error en ver_carrito: {e}")
-                messages.error(request, f'Error al ver el carrito: {e}')
-                return redirect('listar_productos')
+            return render(request, 'pedidos/carrito.html', {
+                'productos_carrito': productos_carrito,
+                'total': total
+            })
+        except Exception as e:
+            print(f"Error en ver_carrito: {e}")
+            messages.error(request, f'Error al ver el carrito: {e}')
+            return redirect('listar_productos')
