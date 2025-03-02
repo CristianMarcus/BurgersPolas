@@ -1,14 +1,37 @@
 {% extends 'base.html' %}
-{% load crispy_forms_tags %}
+{% load static %}
 
 {% block title %}Crear Pedido{% endblock %}
 
 {% block content %}
-    <h2>Crear Pedido</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        {{ cliente_anonimo_form.as_p }}
-        <button type="submit">Crear Pedido</button>
-    </form>
+    <div class="container mt-4">
+        <h2>Crear Pedido</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div id="mensaje_comprobante" style="display: none; color: red;">
+                Adjuntar comprobante de pago para continuar.
+            </div>
+            <button type="submit">Crear Pedido</button>
+        </form>
+    </div>
+
+    <script>
+        const metodoPago = document.getElementById('id_metodo_pago');
+        const comprobantePago = document.getElementById('id_comprobante_pago').parentElement;
+        const mensajeComprobante = document.getElementById('mensaje_comprobante');
+
+        function toggleComprobante() {
+            if (metodoPago.value === 'mercado_pago') {
+                comprobantePago.style.display = 'block';
+                mensajeComprobante.style.display = 'block';
+            } else {
+                comprobantePago.style.display = 'none';
+                mensajeComprobante.style.display = 'none';
+            }
+        }
+
+        metodoPago.addEventListener('change', toggleComprobante);
+        toggleComprobante();
+    </script>
 {% endblock %}

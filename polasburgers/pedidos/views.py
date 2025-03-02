@@ -63,6 +63,8 @@ def detalle_producto(request, producto_id):
     return render(request, 'pedidos/detalle_producto.html', {'producto': producto})
 
 
+
+
 def crear_pedido(request):
     carrito = request.session.get('carrito', {})
     if not carrito:
@@ -70,10 +72,9 @@ def crear_pedido(request):
         return redirect('listar_productos')
 
     if request.method == 'POST':
-        form = PedidoForm(request.POST)
+        form = PedidoForm(request.POST, request.FILES)  # Añade request.FILES aquí
         cliente_anonimo_form = ClienteAnonimoForm(request.POST)
         if form.is_valid() and cliente_anonimo_form.is_valid():
-            print("Formularios válidos")  # agregue esto.
             try:
                 cliente_anonimo = cliente_anonimo_form.save()
                 pedido = form.save(commit=False)
@@ -82,7 +83,6 @@ def crear_pedido(request):
 
                 for producto_id, detalles in carrito.items():
                     producto = get_object_or_404(Producto, pk=producto_id)
-                    # Agrega esta línea para obtener el precio unitario
                     precio_unitario = producto.precio
                     ItemPedido.objects.create(pedido=pedido, producto=producto, cantidad=detalles['cantidad'], precio_unitario=precio_unitario)
 
@@ -91,11 +91,8 @@ def crear_pedido(request):
                 enviar_mensaje_whatsapp(request, pedido)
                 return redirect('detalle_pedido', pedido_id=pedido.id)
             except Exception as e:
-                print(f"Error al crear el pedido: {e}")  # agregue esto.
                 messages.error(request, f'Error al crear el pedido: {e}')
         else:
-            print(form.errors)  # agregue esto.
-            print(cliente_anonimo_form.errors)  # agregue esto.
             messages.error(request, 'Error en el formulario. Por favor, corrige los errores.')
     else:
         form = PedidoForm()
@@ -104,41 +101,38 @@ def crear_pedido(request):
     return render(request, 'pedidos/crear_pedido.html', {'form': form, 'cliente_anonimo_form': cliente_anonimo_form})
 
 def enviar_mensaje_whatsapp(request, pedido):
-        numero_telefono = "+5491126884940"
-        mensaje = f"Nuevo pedido #{pedido.id}:\n"
-        for item in pedido.itempedido_set.all():
-            mensaje += f"- {item.producto.nombre} x {item.cantidad}\n"
-        # Modifica esta línea
-        total = sum(float(item.producto.precio) * item.cantidad for item in pedido.itempedido_set.all())
-        mensaje += f"Total: ${total}\n"
-        mensaje += f"Cliente: {pedido.cliente_anonimo.nombre} {pedido.cliente_anonimo.apellido}\n"
-        mensaje += f"Teléfono: {pedido.cliente_anonimo.telefono}\n"
-        mensaje += f"Dirección: {pedido.direccion}\n"
-        mensaje += "Pago: Efectivo o Mercado Pago (alias/CBU: pola7188)"
+    numero_telefono = "+5491126884940"
+    mensaje = f"Nuevo pedido #{pedido.id}:\n"
+    for item in pedido.itempedido_set.all():
+        mensaje += f"- {item.producto.nombre} x {item.cantidad}\n"
+    total = sum(float(item.producto.precio) * item.cantidad for item in pedido.itempedido_set.all())
+    mensaje += f"Total: ${total}\n"
+    mensaje += f"Cliente: {pedido.cliente_anonimo.nombre} {pedido.cliente_anonimo.apellido}\n"
+    mensaje += f"Teléfono: {pedido.cliente_anonimo.telefono}\n"
+    mensaje += f"Dirección: {pedido.direccion}\n"
+    mensaje += "Pago: Efectivo o Mercado Pago (alias/CBU: pola7188)"
 
-        try:
-            pywhatkit.sendwhatmsg_instantly(numero_telefono, mensaje)
-            messages.success(request, "Mensaje de WhatsApp enviado.")
-        except Exception as e:
-            messages.error(request, f"Error al enviar mensaje de WhatsApp: {e}")
+    try:
+        pywhatkit.sendwhatmsg_instantly(numero_telefono, mensaje)
+        messages.success(request, "Mensaje de WhatsApp enviado.")
+    except Exception as e:
+        messages.error(request, f"Error al enviar mensaje de WhatsApp: {e}")
         
 def actualizar_cantidad(request, producto_id):
-            if request.method == 'POST':
-                cantidad = request.POST.get('cantidad')
-                print(f"Cantidad recibida del formulario: {cantidad}")
-                print(f"Datos del formulario: {request.POST}")
-                if cantidad and cantidad.isdigit() and int(cantidad) > 0:
-                    cantidad = int(cantidad)
-                    carrito = request.session.get('carrito', {})
-                    if producto_id in carrito:
-                        carrito[producto_id]['cantidad'] = cantidad
-                        precio = float(carrito[producto_id]['precio'])
-                        carrito[producto_id]['subtotal'] = precio * cantidad
-                        request.session['carrito'] = carrito
-                        request.session.modified = True
-                else:
-                    messages.error(request, 'Por favor, ingresa una cantidad válida.')
-            return redirect('ver_carrito')
+        if request.method == 'POST':
+            cantidad = request.POST.get('cantidad')
+            if cantidad and cantidad.isdigit() and int(cantidad) > 0:
+                cantidad = int(cantidad)
+                carrito = request.session.get('carrito', {})
+                if producto_id in carrito:
+                    carrito[producto_id]['cantidad'] = cantidad
+                    precio = float(carrito[producto_id]['precio'])
+                    carrito[producto_id]['subtotal'] = precio * cantidad
+                    request.session['carrito'] = carrito
+                    request.session.modified = True  # Guarda los cambios en la sesión
+            else:
+                messages.error(request, 'Por favor, ingresa una cantidad válida.')
+        return redirect('ver_carrito')
 
 def eliminar_del_carrito(request, producto_id):
     carrito = request.session.get('carrito', {})

@@ -59,21 +59,21 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 MIDDLEWARE = [
-            'django.middleware.security.SecurityMiddleware',
-            'django.contrib.sessions.middleware.SessionMiddleware',
-            'django.middleware.common.CommonMiddleware',
-            'django.middleware.csrf.CsrfViewMiddleware',
-            'django.contrib.auth.middleware.AuthenticationMiddleware',
-            'django.contrib.messages.middleware.MessageMiddleware',
-            'django.middleware.clickjacking.XFrameOptionsMiddleware',
-        ]
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
 
 ROOT_URLCONF = 'polasburgers.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+        'DIRS': [TEMPLATES_DIRS],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -96,10 +96,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'polasburgers_db',  # Nombre de tu base de datos
-        'USER': 'postgres',      # Tu usuario de PostgreSQL
-        'PASSWORD': '1234',  # Tu contraseña de PostgreSQL
-        'HOST': 'localhost',        # O la dirección de tu servidor PostgreSQL
-        'PORT': '5432',             # Puerto de PostgreSQL
+        'USER': 'postgres',        # Tu usuario de PostgreSQL
+        'PASSWORD': '1234',        # Tu contraseña de PostgreSQL
+        'HOST': 'localhost',         # O la dirección de tu servidor PostgreSQL
+        'PORT': '5432',              # Puerto de PostgreSQL
     }
 }
 
@@ -144,5 +144,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
+
 SESSION_COOKIE_AGE = 1209600  # 2 semanas
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.file' # Agregado o modificado

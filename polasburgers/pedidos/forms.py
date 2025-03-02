@@ -19,7 +19,7 @@ class ClienteForm(forms.ModelForm):
 class PedidoForm(forms.ModelForm):
     class Meta:
         model = Pedido
-        fields = ['direccion']
+        fields = ['direccion','metodo_pago', 'comprobante_pago']
 
     def clean_direccion(self):
         direccion = self.cleaned_data['direccion']

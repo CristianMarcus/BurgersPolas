@@ -32,6 +32,12 @@ class Pedido(models.Model):
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, null=True, blank=True)
     fecha_pedido = models.DateTimeField(auto_now_add=True)
     total = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    METODO_PAGO_CHOICES = (
+            ('efectivo', 'Efectivo'),
+            ('mercado_pago', 'Mercado Pago'),
+        )
+    metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO_CHOICES, default='efectivo')
+    comprobante_pago = models.ImageField(upload_to='comprobantes/', null=True, blank=True)
     ESTADO_CHOICES = (
         ('pendiente', 'Pendiente'),
         ('preparacion', 'En Preparación'),
