@@ -123,20 +123,22 @@ def enviar_mensaje_whatsapp(request, pedido):
             messages.error(request, f"Error al enviar mensaje de WhatsApp: {e}")
         
 def actualizar_cantidad(request, producto_id):
-        if request.method == 'POST':
-            cantidad = request.POST.get('cantidad')
-            if cantidad and cantidad.isdigit() and int(cantidad) > 0:
-                cantidad = int(cantidad)
-                carrito = request.session.get('carrito', {})
-                if producto_id in carrito:
-                    carrito[producto_id]['cantidad'] = cantidad
-                    # Recalcula el subtotal
-                    precio = float(carrito[producto_id]['precio'])
-                    carrito[producto_id]['subtotal'] = precio * cantidad
-                    request.session['carrito'] = carrito
-            else:
-                messages.error(request, 'Por favor, ingresa una cantidad válida.')
-        return redirect('ver_carrito')
+            if request.method == 'POST':
+                cantidad = request.POST.get('cantidad')
+                print(f"Cantidad recibida del formulario: {cantidad}")
+                print(f"Datos del formulario: {request.POST}")
+                if cantidad and cantidad.isdigit() and int(cantidad) > 0:
+                    cantidad = int(cantidad)
+                    carrito = request.session.get('carrito', {})
+                    if producto_id in carrito:
+                        carrito[producto_id]['cantidad'] = cantidad
+                        precio = float(carrito[producto_id]['precio'])
+                        carrito[producto_id]['subtotal'] = precio * cantidad
+                        request.session['carrito'] = carrito
+                        request.session.modified = True
+                else:
+                    messages.error(request, 'Por favor, ingresa una cantidad válida.')
+            return redirect('ver_carrito')
 
 def eliminar_del_carrito(request, producto_id):
     carrito = request.session.get('carrito', {})
@@ -248,7 +250,7 @@ def eliminar_del_carrito(request, producto_id):
 def ver_carrito(request):
         try:
             carrito = request.session.get('carrito', {})
-            print(f"Carrito en ver_carrito: {carrito}") # Agregue esta linea
+            print(f"Carrito en ver_carrito: {carrito}")
             productos_carrito = []
             total = 0
 
@@ -256,9 +258,11 @@ def ver_carrito(request):
                 try:
                     precio = float(detalles['precio'])
                     cantidad = detalles['cantidad']
-                    print(f"Cantidad en ver_carrito: {cantidad}") # Agregue esta linea
-                    subtotal = precio * cantidad
-                    detalles['subtotal'] = subtotal
+                    print(f"Cantidad en ver_carrito: {cantidad}")
+                    # Verifica si el subtotal existe en los detalles
+                    if 'subtotal' not in detalles:
+                        detalles['subtotal'] = precio * cantidad
+                    subtotal = detalles['subtotal']
                     detalles['id'] = producto_id
                     productos_carrito.append(detalles)
                     total += subtotal
