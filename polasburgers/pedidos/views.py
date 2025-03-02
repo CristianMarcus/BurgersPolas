@@ -5,8 +5,9 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum
 import uuid
+import pywhatkit  # Importar la librería para WhatsApp
 
-@login_required
+
 def agregar_producto(request):
     if request.method == 'POST':
         form = ProductoForm(request.POST, request.FILES)
@@ -23,7 +24,7 @@ def agregar_producto(request):
         form = ProductoForm()
     return render(request, 'pedidos/agregar_producto.html', {'form': form})
 
-@login_required
+
 def editar_producto(request, producto_id):
     producto = get_object_or_404(Producto, pk=producto_id)
     if request.method == 'POST':
@@ -41,7 +42,7 @@ def editar_producto(request, producto_id):
         form = ProductoForm(instance=producto)
     return render(request, 'pedidos/editar_producto.html', {'form': form, 'producto': producto})
 
-@login_required
+
 def eliminar_producto(request, producto_id):
     producto = get_object_or_404(Producto, pk=producto_id)
     if request.method == 'POST':
@@ -61,36 +62,79 @@ def detalle_producto(request, producto_id):
     producto = get_object_or_404(Producto, pk=producto_id)
     return render(request, 'pedidos/detalle_producto.html', {'producto': producto})
 
-@login_required
+
+
 def crear_pedido(request):
     carrito = request.session.get('carrito', {})
     if not carrito:
         messages.error(request, 'El carrito está vacío. Agrega productos antes de crear un pedido.')
-        return redirect('lista_productos')
+        return redirect('listar_productos')
 
     if request.method == 'POST':
         form = PedidoForm(request.POST)
-        if form.is_valid():
+        cliente_anonimo_form = ClienteAnonimoForm(request.POST)
+        if form.is_valid() and cliente_anonimo_form.is_valid():
+            print("Formularios válidos")  # agregue esto.
             try:
+                cliente_anonimo = cliente_anonimo_form.save()
                 pedido = form.save(commit=False)
-                if request.user.is_authenticated:
-                    pedido.usuario = request.user
+                pedido.cliente_anonimo = cliente_anonimo
                 pedido.save()
 
                 for producto_id, detalles in carrito.items():
                     producto = get_object_or_404(Producto, pk=producto_id)
-                    pedido.productos.add(producto, through_defaults={'cantidad': detalles['cantidad']})
+                    # Agrega esta línea para obtener el precio unitario
+                    precio_unitario = producto.precio
+                    ItemPedido.objects.create(pedido=pedido, producto=producto, cantidad=detalles['cantidad'], precio_unitario=precio_unitario)
 
                 del request.session['carrito']
                 messages.success(request, 'Pedido creado con éxito.')
-                return redirect('listar_pedidos')
+                enviar_mensaje_whatsapp(request, pedido)
+                return redirect('detalle_pedido', pedido_id=pedido.id)
             except Exception as e:
+                print(f"Error al crear el pedido: {e}")  # agregue esto.
                 messages.error(request, f'Error al crear el pedido: {e}')
         else:
+            print(form.errors)  # agregue esto.
+            print(cliente_anonimo_form.errors)  # agregue esto.
             messages.error(request, 'Error en el formulario. Por favor, corrige los errores.')
     else:
         form = PedidoForm()
-    return render(request, 'pedidos/crear_pedido.html', {'form': form})
+        cliente_anonimo_form = ClienteAnonimoForm()
+
+    return render(request, 'pedidos/crear_pedido.html', {'form': form, 'cliente_anonimo_form': cliente_anonimo_form})
+
+def enviar_mensaje_whatsapp(request, pedido):
+    numero_telefono = "+5491126884940"  # Reemplaza con tu número
+    mensaje = f"Nuevo pedido #{pedido.id}:\n"
+    for item in pedido.itempedido_set.all():
+        mensaje += f"- {item.producto.nombre} x {item.cantidad}\n"
+    mensaje += f"Total: ${pedido.itempedido_set.aggregate(total=Sum('producto__precio' * 'cantidad'))['total']}\n"
+    mensaje += f"Cliente: {pedido.cliente_anonimo.nombre} {pedido.cliente_anonimo.apellido}\n"
+    mensaje += f"Teléfono: {pedido.cliente_anonimo.telefono}\n"
+    mensaje += f"Dirección: {pedido.direccion}\n"
+    mensaje += "Pago: Efectivo o Mercado Pago (alias/CBU: pola7188)"  # Agrega tu alias/CBU
+
+    try:
+        pywhatkit.sendwhatmsg_instantly(numero_telefono, mensaje)
+        messages.success(request, "Mensaje de WhatsApp enviado.")
+    except Exception as e:
+        messages.error(request, f"Error al enviar mensaje de WhatsApp: {e}")
+        
+        
+def actualizar_cantidad(request, producto_id):
+    if request.method == 'POST':
+        cantidad = int(request.POST.get('cantidad'))
+        carrito = request.session.get('carrito', {})
+        if producto_id in carrito:
+            carrito[producto_id]['cantidad'] = cantidad
+            request.session['carrito'] = carrito
+    return redirect('ver_carrito')
+
+def vaciar_carrito(request):
+    if 'carrito' in request.session:
+        del request.session['carrito']
+    return redirect('ver_carrito')
 
 def listar_pedidos(request):
     try:
@@ -145,26 +189,26 @@ def eliminar_pedido(request, pedido_id):
         return redirect('listar_pedidos')
 
 def agregar_al_carrito(request, producto_id):
-    try:
-        producto = get_object_or_404(Producto, pk=producto_id)
-        carrito = request.session.get('carrito', {})
+        try:
+            producto = get_object_or_404(Producto, pk=producto_id)
+            carrito = request.session.get('carrito', {})
 
-        if producto_id in carrito:
-            carrito[producto_id]['cantidad'] += 1
-        else:
-            carrito[producto_id] = {
-                'nombre': producto.nombre,
-                'precio': str(producto.precio),
-                'cantidad': 1,
-            }
+            if producto_id in carrito:
+                carrito[producto_id]['cantidad'] += 1
+            else:
+                carrito[producto_id] = {
+                    'nombre': producto.nombre,
+                    'precio': str(producto.precio),
+                    'cantidad': 1,
+                }
 
-        request.session['carrito'] = carrito
-        messages.success(request, f'{producto.nombre} agregado al carrito.')
-    except Producto.DoesNotExist:
-        messages.error(request, 'El producto no existe.')
-    except Exception as e:
-        messages.error(request, f'Error al agregar el producto al carrito: {e}')
-    return redirect('listar_productos')
+            request.session['carrito'] = carrito
+            messages.success(request, f'{producto.nombre} agregado al carrito.')
+        except Producto.DoesNotExist:
+            messages.error(request, 'El producto no existe.')
+        except Exception as e:
+            messages.error(request, f'Error al agregar el producto al carrito: {e}')
+        return redirect('ver_carrito')
 
 def eliminar_del_carrito(request, producto_id):
         carrito = request.session.get('carrito', {})
@@ -181,22 +225,28 @@ def eliminar_del_carrito(request, producto_id):
         return redirect('ver_carrito')
 
 def ver_carrito(request):
-    try:
-        carrito = request.session.get('carrito', {})
-        productos_carrito = []
-        total = 0
+            try:
+                carrito = request.session.get('carrito', {})
+                productos_carrito = []
+                total = 0
 
-        for producto_id, detalles in carrito.items():
-            subtotal = float(detalles['precio']) * detalles['cantidad']
-            detalles['subtotal'] = subtotal
-            detalles['id'] = producto_id
-            productos_carrito.append(detalles)
-            total += subtotal
+                for producto_id, detalles in carrito.items():
+                    try:
+                        precio = float(detalles['precio'])
+                        subtotal = precio * detalles['cantidad']
+                        detalles['subtotal'] = subtotal
+                        detalles['id'] = producto_id
+                        productos_carrito.append(detalles)
+                        total += subtotal
+                    except ValueError:
+                        print(f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
+                        messages.error(request, f"Error: No se pudo convertir el precio '{detalles['precio']}' a un número.")
 
-        return render(request, 'pedidos/carrito.html', {
-            'productos_carrito': productos_carrito,
-            'total': total
-        })
-    except Exception as e:
-        messages.error(request, f'Error al ver el carrito: {e}')
-        return redirect('listar_productos')
+                return render(request, 'pedidos/carrito.html', {
+                    'productos_carrito': productos_carrito,
+                    'total': total
+                })
+            except Exception as e:
+                print(f"Error en ver_carrito: {e}")
+                messages.error(request, f'Error al ver el carrito: {e}')
+                return redirect('listar_productos')

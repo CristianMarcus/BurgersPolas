@@ -7,10 +7,8 @@
     <h2>Crear Pedido</h2>
     <form method="post">
         {% csrf_token %}
-        <h3>Datos del Cliente</h3>
-        {{ cliente_form|crispy }}
-        <h3>Productos</h3>
-        {{ item_form|crispy }}
-        <button type="submit" class="btn btn-primary">Agregar al Pedido</button>
+        {{ form.as_p }}
+        {{ cliente_anonimo_form.as_p }}
+        <button type="submit">Crear Pedido</button>
     </form>
 {% endblock %}

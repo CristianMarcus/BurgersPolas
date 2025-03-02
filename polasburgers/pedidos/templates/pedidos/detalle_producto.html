@@ -10,7 +10,6 @@
             <h5 class="card-title">{{ producto.nombre }}</h5>
             <p class="card-text">{{ producto.descripcion }}</p>
             <p class="card-text">Precio: ${{ producto.precio }}</p>
-            <a href="{% url 'crear_pedido' %}" class="btn btn-success">Agregar al Pedido</a>
         </div>
     </div>
 {% endblock %}
