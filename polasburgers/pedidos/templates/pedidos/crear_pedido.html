@@ -4,34 +4,45 @@
 {% block title %}Crear Pedido{% endblock %}
 
 {% block content %}
-    <div class="container mt-4">
-        <h2>Crear Pedido</h2>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <div id="mensaje_comprobante" style="display: none; color: red;">
-                Adjuntar comprobante de pago para continuar.
-            </div>
-            <button type="submit">Crear Pedido</button>
-        </form>
-    </div>
+<div class="container mt-4">
+    <h2>Crear Pedido</h2>
 
-    <script>
-        const metodoPago = document.getElementById('id_metodo_pago');
-        const comprobantePago = document.getElementById('id_comprobante_pago').parentElement;
-        const mensajeComprobante = document.getElementById('mensaje_comprobante');
+    <form method="post" action="{% url 'crear_pedido' %}">
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="direccion" class="form-label">Dirección:</label>
+            <input type="text" name="direccion" id="direccion" class="form-control" required>
+        </div>
 
-        function toggleComprobante() {
-            if (metodoPago.value === 'mercado_pago') {
-                comprobantePago.style.display = 'block';
-                mensajeComprobante.style.display = 'block';
-            } else {
-                comprobantePago.style.display = 'none';
-                mensajeComprobante.style.display = 'none';
-            }
+        <div class="mb-3">
+            <label for="metodo_pago" class="form-label">Método de pago:</label>
+            <select name="metodo_pago" id="metodo_pago" class="form-select" required>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Transferencia">Transferencia</option>
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-success">Confirmar Pedido</button>
+    </form>
+</div>
+
+<script>
+    const metodoPago = document.getElementById('metodo_pago');
+    const comprobantePago = document.getElementById('id_comprobante_pago')?.parentElement;
+    const mensajeComprobante = document.getElementById('mensaje_comprobante');
+
+    function toggleComprobante() {
+        if (metodoPago.value === 'mercado_pago') {
+            comprobantePago.style.display = 'block';
+            mensajeComprobante.style.display = 'block';
+        } else {
+            comprobantePago.style.display = 'none';
+            mensajeComprobante.style.display = 'none';
         }
+    }
 
-        metodoPago.addEventListener('change', toggleComprobante);
-        toggleComprobante();
-    </script>
+    metodoPago.addEventListener('change', toggleComprobante);
+    toggleComprobante();
+</script>
 {% endblock %}

@@ -83,40 +83,75 @@ def detalle_producto(request, producto_id):
 
 
 
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import Pedido, ItemPedido, ClienteAnonimo
+from django.utils.timezone import now
+
 def crear_pedido(request):
-    carrito = request.session.get('carrito', {})
-    if not carrito:
-        messages.error(request, 'El carrito está vacío. Agrega productos antes de crear un pedido.')
-        return redirect('listar_productos')
-
     if request.method == 'POST':
-        form = PedidoForm(request.POST, request.FILES)  # Añade request.FILES aquí
-        cliente_anonimo_form = ClienteAnonimoForm(request.POST)
-        if form.is_valid() and cliente_anonimo_form.is_valid():
-            try:
-                cliente_anonimo = cliente_anonimo_form.save()
-                pedido = form.save(commit=False)
-                pedido.cliente_anonimo = cliente_anonimo
-                pedido.save()
+        carrito = request.session.get('carrito', {})
 
-                for producto_id, detalles in carrito.items():
-                    producto = get_object_or_404(Producto, pk=producto_id)
-                    precio_unitario = producto.precio
-                    ItemPedido.objects.create(pedido=pedido, producto=producto, cantidad=detalles['cantidad'], precio_unitario=precio_unitario)
+        if not carrito:
+            messages.error(request, "El carrito está vacío.")
+            return redirect('ver_carrito')
 
-                del request.session['carrito']
-                messages.success(request, 'Pedido creado con éxito.')
-                enviar_mensaje_whatsapp(request, pedido)
-                return redirect('detalle_pedido', pedido_id=pedido.id)
-            except Exception as e:
-                messages.error(request, f'Error al crear el pedido: {e}')
+        # Verificar si el usuario está autenticado o es un cliente anónimo
+        if request.user.is_authenticated:
+            cliente = request.user.cliente  # Relación OneToOne
+            cliente_anonimo = None
         else:
-            messages.error(request, 'Error en el formulario. Por favor, corrige los errores.')
-    else:
-        form = PedidoForm()
-        cliente_anonimo_form = ClienteAnonimoForm()
+            # Obtener datos de un formulario para cliente anónimo
+            nombre = request.POST.get('nombre')
+            apellido = request.POST.get('apellido', 'invitado')
+            telefono = request.POST.get('telefono')
+            
+            if not nombre or not telefono:
+                messages.error(request, "Debe proporcionar un nombre y teléfono para continuar.")
+                return redirect('ver_carrito')
+            
+            cliente_anonimo, _ = ClienteAnonimo.objects.get_or_create(
+                nombre=nombre, apellido=apellido, telefono=telefono
+            )
+            cliente = None
 
-    return render(request, 'pedidos/crear_pedido.html', {'form': form, 'cliente_anonimo_form': cliente_anonimo_form})
+        metodo_pago = request.POST.get('metodo_pago', 'efectivo')
+        direccion = request.POST.get('direccion', 'Sin dirección')
+
+        # Crear pedido en la BD
+        pedido = Pedido.objects.create(
+            direccion=direccion,
+            cliente=cliente,
+            cliente_anonimo=cliente_anonimo,
+            fecha_pedido=now(),
+            metodo_pago=metodo_pago,
+            total=0  # Se actualizará más adelante
+        )
+
+        total_pedido = 0
+        for producto_id, item in carrito.items():
+            cantidad = int(item['cantidad'])
+            precio_unitario = float(item['precio'])
+            total_pedido += cantidad * precio_unitario
+
+            ItemPedido.objects.create(
+                pedido=pedido,
+                producto_id=producto_id,
+                cantidad=cantidad,
+                precio_unitario=precio_unitario
+            )
+
+        # Actualizar el total del pedido
+        pedido.total = total_pedido
+        pedido.save()
+
+        # Vaciar el carrito de la sesión
+        request.session['carrito'] = {}
+        messages.success(request, "Pedido realizado con éxito.")
+        return redirect('listar_pedidos')
+
+    return render(request, 'pedidos/crear_pedido.html')
+
 
 def enviar_mensaje_whatsapp(request, pedido):
     numero_telefono = "+5491126884940"
@@ -136,21 +171,36 @@ def enviar_mensaje_whatsapp(request, pedido):
     except Exception as e:
         messages.error(request, f"Error al enviar mensaje de WhatsApp: {e}")
         
+
+
+
+
 def actualizar_cantidad(request, producto_id):
-        if request.method == 'POST':
-            cantidad = request.POST.get('cantidad')
-            if cantidad and cantidad.isdigit() and int(cantidad) > 0:
-                cantidad = int(cantidad)
-                carrito = request.session.get('carrito', {})
-                if producto_id in carrito:
-                    carrito[producto_id]['cantidad'] = cantidad
-                    precio = float(carrito[producto_id]['precio'])
-                    carrito[producto_id]['subtotal'] = precio * cantidad
-                    request.session['carrito'] = carrito
-                    request.session.modified = True  # Guarda los cambios en la sesión
-            else:
-                messages.error(request, 'Por favor, ingresa una cantidad válida.')
-        return redirect('ver_carrito')
+    if request.method == 'POST':
+        carrito = request.session.get('carrito', {})  # Obtiene el carrito desde la sesión
+        producto_id = str(producto_id)  # Convierte el ID del producto a string para que coincida con las claves del carrito
+
+        if producto_id in carrito:
+            try:
+                nueva_cantidad = int(request.POST.get('cantidad', 1))  # Obtiene la cantidad del formulario
+                if nueva_cantidad < 1:
+                    nueva_cantidad = 1  # Evita valores negativos o 0
+                
+                carrito[producto_id]['cantidad'] = nueva_cantidad  # Actualiza la cantidad
+                carrito[producto_id]['subtotal'] = float(carrito[producto_id]['precio']) * nueva_cantidad  # Recalcula el subtotal
+
+                request.session['carrito'] = carrito  # Guarda los cambios en la sesión
+                request.session.modified = True  # Asegura que Django guarde la sesión modificada
+
+                messages.success(request, "Cantidad actualizada correctamente.")
+            except ValueError:
+                messages.error(request, "La cantidad ingresada no es válida.")
+        else:
+            messages.error(request, "El producto no se encontró en el carrito.")
+
+    return redirect('ver_carrito')
+
+
 
 def eliminar_del_carrito(request, producto_id):
     carrito = request.session.get('carrito', {})
