@@ -89,68 +89,38 @@ from .models import Pedido, ItemPedido, ClienteAnonimo
 from django.utils.timezone import now
 
 def crear_pedido(request):
+    carrito = request.session.get('carrito', {})
+    if not carrito:
+        messages.error(request, 'El carrito está vacío.')
+        return redirect('listar_productos')
+
     if request.method == 'POST':
-        carrito = request.session.get('carrito', {})
+        form = PedidoForm(request.POST)
+        cliente_anonimo_form = ClienteAnonimoForm(request.POST)
 
-        if not carrito:
-            messages.error(request, "El carrito está vacío.")
-            return redirect('ver_carrito')
+        if form.is_valid() and cliente_anonimo_form.is_valid():
+            try:
+                cliente_anonimo = cliente_anonimo_form.save()
+                pedido = form.save(commit=False)
+                pedido.cliente_anonimo = cliente_anonimo
+                pedido.save()
 
-        # Verificar si el usuario está autenticado o es un cliente anónimo
-        if request.user.is_authenticated:
-            cliente = request.user.cliente  # Relación OneToOne
-            cliente_anonimo = None
+                for producto_id, detalles in carrito.items():
+                    producto = get_object_or_404(Producto, pk=producto_id)
+                    ItemPedido.objects.create(pedido=pedido, producto=producto, cantidad=detalles['cantidad'], precio_unitario=producto.precio)
+
+                del request.session['carrito']
+                messages.success(request, 'Pedido creado con éxito.')
+                return redirect('detalle_pedido', pedido_id=pedido.id)
+            except Exception as e:
+                messages.error(request, f'Error al crear el pedido: {e}')
         else:
-            # Obtener datos de un formulario para cliente anónimo
-            nombre = request.POST.get('nombre')
-            apellido = request.POST.get('apellido', 'invitado')
-            telefono = request.POST.get('telefono')
-            
-            if not nombre or not telefono:
-                messages.error(request, "Debe proporcionar un nombre y teléfono para continuar.")
-                return redirect('ver_carrito')
-            
-            cliente_anonimo, _ = ClienteAnonimo.objects.get_or_create(
-                nombre=nombre, apellido=apellido, telefono=telefono
-            )
-            cliente = None
+            messages.error(request, 'Error en el formulario.')
+    else:
+        form = PedidoForm()
+        cliente_anonimo_form = ClienteAnonimoForm()
 
-        metodo_pago = request.POST.get('metodo_pago', 'efectivo')
-        direccion = request.POST.get('direccion', 'Sin dirección')
-
-        # Crear pedido en la BD
-        pedido = Pedido.objects.create(
-            direccion=direccion,
-            cliente=cliente,
-            cliente_anonimo=cliente_anonimo,
-            fecha_pedido=now(),
-            metodo_pago=metodo_pago,
-            total=0  # Se actualizará más adelante
-        )
-
-        total_pedido = 0
-        for producto_id, item in carrito.items():
-            cantidad = int(item['cantidad'])
-            precio_unitario = float(item['precio'])
-            total_pedido += cantidad * precio_unitario
-
-            ItemPedido.objects.create(
-                pedido=pedido,
-                producto_id=producto_id,
-                cantidad=cantidad,
-                precio_unitario=precio_unitario
-            )
-
-        # Actualizar el total del pedido
-        pedido.total = total_pedido
-        pedido.save()
-
-        # Vaciar el carrito de la sesión
-        request.session['carrito'] = {}
-        messages.success(request, "Pedido realizado con éxito.")
-        return redirect('listar_pedidos')
-
-    return render(request, 'pedidos/crear_pedido.html')
+    return render(request, 'pedidos/crear_pedido.html', {'form': form, 'cliente_anonimo_form': cliente_anonimo_form})
 
 
 def enviar_mensaje_whatsapp(request, pedido):
@@ -189,8 +159,9 @@ def actualizar_cantidad(request, producto_id):
                 carrito[producto_id]['cantidad'] = nueva_cantidad  # Actualiza la cantidad
                 carrito[producto_id]['subtotal'] = float(carrito[producto_id]['precio']) * nueva_cantidad  # Recalcula el subtotal
 
-                request.session['carrito'] = carrito  # Guarda los cambios en la sesión
-                request.session.modified = True  # Asegura que Django guarde la sesión modificada
+                request.session['carrito'] = carrito
+                request.session.modified = True
+                request.session.save()
 
                 messages.success(request, "Cantidad actualizada correctamente.")
             except ValueError:
@@ -312,30 +283,25 @@ def eliminar_del_carrito(request, producto_id):
 def ver_carrito(request):
     try:
         carrito = request.session.get('carrito', {})
-        print(f"Carrito en ver_carrito: {carrito}")
         productos_carrito = []
         total = 0
 
         for producto_id, detalles in carrito.items():
             try:
                 precio = float(detalles['precio'])
-                cantidad = int(detalles['cantidad'])
-                print(f"Cantidad en ver_carrito: {cantidad}")
-                # Recalcula siempre el subtotal basado en la cantidad actualizada
-                detalles['subtotal'] = precio * cantidad
+                cantidad = detalles['cantidad']
+                subtotal = precio * cantidad
+                detalles['subtotal'] = subtotal
                 detalles['id'] = producto_id
                 productos_carrito.append(detalles)
-                total += detalles['subtotal']
+                total += subtotal
             except ValueError:
-                error_msg = f"Error: No se pudo convertir el precio '{detalles['precio']}' o la cantidad '{detalles['cantidad']}' a un número."
-                print(error_msg)
-                messages.error(request, error_msg)
+                messages.error(request, f"Error: Precio inválido para {detalles['nombre']}.")
 
         return render(request, 'pedidos/carrito.html', {
             'productos_carrito': productos_carrito,
             'total': total
         })
     except Exception as e:
-        print(f"Error en ver_carrito: {e}")
         messages.error(request, f'Error al ver el carrito: {e}')
         return redirect('listar_productos')

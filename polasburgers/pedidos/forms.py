@@ -26,7 +26,13 @@ class PedidoForm(forms.ModelForm):
         if not direccion:
             raise ValidationError("La dirección es obligatoria.")
         return direccion
-
+    
+    def clean_metodo_pago(self):
+        metodo_pago = self.cleaned_data['metodo_pago']
+        if not metodo_pago:
+            raise forms.ValidationError("El método de pago es obligatorio.")
+        return metodo_pago
+    
 class ClienteAnonimoForm(forms.ModelForm):
     class Meta:
         model = ClienteAnonimo
