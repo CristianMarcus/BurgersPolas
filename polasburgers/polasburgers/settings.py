@@ -147,4 +147,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SESSION_COOKIE_AGE = 1209600  # 2 semanas
 
-SESSION_ENGINE = 'django.contrib.sessions.backends.file' # Agregado o modificado
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Usar la predeterminada

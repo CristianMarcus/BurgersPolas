@@ -76,10 +76,20 @@ class ItemPedidoForm(forms.ModelForm):
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
-        fields = '__all__'
+        fields = ['nombre', 'descripcion', 'precio', 'imagen']
 
     def clean_precio(self):
         precio = self.cleaned_data['precio']
         if precio <= 0:
             raise ValidationError("El precio debe ser mayor que cero.")
         return precio
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        metodo_pago = cleaned_data.get('metodo_pago')
+        comprobante_pago = cleaned_data.get('comprobante_pago')
+
+        if metodo_pago == 'mercado_pago' and not comprobante_pago:
+            self.add_error('comprobante_pago', "El comprobante de pago es obligatorio para Mercado Pago.")
+
+        return cleaned_data

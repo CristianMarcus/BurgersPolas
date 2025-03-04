@@ -83,10 +83,11 @@ def detalle_producto(request, producto_id):
 
 
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Pedido, ItemPedido, ClienteAnonimo
-from django.utils.timezone import now
+from .models import Pedido, ItemPedido, ClienteAnonimo, Producto
+from .forms import PedidoForm, ClienteAnonimoForm
+from django.utils import timezone  # Importa timezone
 
 def crear_pedido(request):
     carrito = request.session.get('carrito', {})
@@ -95,7 +96,7 @@ def crear_pedido(request):
         return redirect('listar_productos')
 
     if request.method == 'POST':
-        form = PedidoForm(request.POST)
+        form = PedidoForm(request.POST, request.FILES)
         cliente_anonimo_form = ClienteAnonimoForm(request.POST)
 
         if form.is_valid() and cliente_anonimo_form.is_valid():
@@ -103,15 +104,24 @@ def crear_pedido(request):
                 cliente_anonimo = cliente_anonimo_form.save()
                 pedido = form.save(commit=False)
                 pedido.cliente_anonimo = cliente_anonimo
+                pedido.fecha_pedido = timezone.now()  # Establece la fecha y hora del pedido
                 pedido.save()
 
+                total = 0  # Inicializa el total del pedido
                 for producto_id, detalles in carrito.items():
                     producto = get_object_or_404(Producto, pk=producto_id)
-                    ItemPedido.objects.create(pedido=pedido, producto=producto, cantidad=detalles['cantidad'], precio_unitario=producto.precio)
+                    cantidad = detalles['cantidad']
+                    precio_unitario = producto.precio
+                    subtotal = cantidad * precio_unitario
+                    total += subtotal
+                    ItemPedido.objects.create(pedido=pedido, producto=producto, cantidad=cantidad, precio_unitario=precio_unitario)
+
+                pedido.total = total  # Establece el total del pedido
+                pedido.save()
 
                 del request.session['carrito']
                 messages.success(request, 'Pedido creado con éxito.')
-                return redirect('detalle_pedido', pedido_id=pedido.id)
+                return redirect('listar_pedidos')
             except Exception as e:
                 messages.error(request, f'Error al crear el pedido: {e}')
         else:
@@ -211,17 +221,17 @@ def listar_pedidos(request):
         messages.error(request, f'Error al listar los pedidos: {e}')
         return render(request, 'pedidos/listar_pedidos.html', {'pedidos': []})
 
+
+
 def detalle_pedido(request, pedido_id):
-    pedido = get_object_or_404(Pedido, pk=pedido_id)
-    if request.user.is_authenticated:
-        if pedido.cliente and pedido.cliente.user == request.user:
-            return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
-    else:
-        cliente_anonimo_id = request.session.get('cliente_anonimo_id')
-        if cliente_anonimo_id and pedido.cliente_anonimo_id == cliente_anonimo_id:
-            return render(request, 'pedidos/detalle_pedido.html', {'pedido': pedido})
-    messages.error(request, "No tienes permiso para ver este pedido.")
-    return redirect('listar_pedidos')
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    items = ItemPedido.objects.filter(pedido=pedido)  # Obtiene los items del pedido
+
+    return render(request, 'pedidos/detalle_pedido.html', {
+        'pedido': pedido,
+        'items': items  # Pasar los items al template
+    })
+
 
 def eliminar_pedido(request, pedido_id):
     try:

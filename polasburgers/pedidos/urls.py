@@ -12,7 +12,7 @@ urlpatterns = [
     # URLs para Pedidos
     path('crear/', views.crear_pedido, name='crear_pedido'),  # Formulario para crear un nuevo pedido
     path('pedidos/', views.listar_pedidos, name='listar_pedidos'),  # Lista todos los pedidos
-    path('pedidos/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),  # Detalle de un pedido específico
+    path('detalle/<int:pedido_id>/', views.detalle_pedido, name='detalle_pedido'),  # Detalle de un pedido específico
     path('eliminar_pedido/<int:pedido_id>/', views.eliminar_pedido, name='eliminar_pedido'),  # Confirmación para eliminar un pedido
 
     # URLs para el Carrito de Compras
